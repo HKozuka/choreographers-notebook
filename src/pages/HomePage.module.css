@@ -1,0 +1,105 @@
+.header {
+  margin-bottom: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: var(--border);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Seeds of Movement hero section */
+.seedsSection {
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-xl);
+  border: var(--border);
+  background-color: var(--color-surface);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.seedsBtn {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+  letter-spacing: 0.01em;
+}
+
+.seedsHint {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+/* Projects section */
+.projectsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.sectionHeading {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--border);
+}
+
+.createForm {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.input {
+  flex: 1;
+}
+
+.emptyState {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  padding: var(--space-lg) 0;
+}
+
+.projectList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.projectBtn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem var(--space-md);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.projectBtn:hover {
+  background-color: var(--color-surface);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
