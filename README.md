@@ -35,4 +35,4 @@ VITE_WATSONX_PROJECT_ID=your_watsonx_project_id_here
 
 ## Challenge
 
-Submitted to the [IBM AI Builders Challenge](https://ibm.com) — "Reimagine Creative Industries with AI" theme.
+Submitted to the [IBM AI Builders Challenge](https://aibuilderschallenge-bob.bemyapp.com/) — "Reimagine Creative Industries with AI" theme.
