@@ -1,0 +1,29 @@
+/* ─── Design Tokens — Choreographer's Notebook ─── */
+
+:root {
+  /* Colour palette */
+  --color-accent-primary:   #2D4A3E;
+  --color-accent-secondary: #3B5245;
+  --color-background:       #F5F2EC;
+  --color-surface:          #EDE9E1;
+  --color-text-primary:     #1C1C1A;
+  --color-text-secondary:   #6B6860;
+  --color-border:           #D4CFC6;
+
+  /* Typography */
+  --font-display: 'Lora', Georgia, serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+
+  /* Spacing scale */
+  --space-xs:  0.25rem;
+  --space-sm:  0.5rem;
+  --space-md:  1rem;
+  --space-lg:  1.75rem;
+  --space-xl:  2.5rem;
+  --space-2xl: 4rem;
+
+  /* Border */
+  --radius:        4px;
+  --border-width:  1px;
+  --border:        var(--border-width) solid var(--color-border);
+}
