@@ -9,6 +9,8 @@
   --color-text-primary:     #1C1C1A;
   --color-text-secondary:   #6B6860;
   --color-border:           #D4CFC6;
+  --color-danger:           #8B2E2E;
+  --color-danger-surface:   #f9f0f0;
 
   /* Typography */
   --font-display: 'Lora', Georgia, serif;

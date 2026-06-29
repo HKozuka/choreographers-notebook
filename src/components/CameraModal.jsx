@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import styles from './CameraModal.module.css'
 
 /**
@@ -13,54 +13,88 @@ export default function CameraModal({ onClose, onSave }) {
   const chunksRef = useRef([])
   const streamRef = useRef(null)
 
-  const [phase, setPhase] = useState('preview') // 'preview' | 'recording' | 'review' | 'unsupported' | 'denied'
+  const [phase, setPhase] = useState('loading') // 'loading' | 'preview' | 'recording' | 'review' | 'unsupported' | 'denied'
   const [recordedBlob, setRecordedBlob] = useState(null)
   const [recordedUrl, setRecordedUrl] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const timerRef = useRef(null)
 
-  // Check browser support
+  // Check browser support once
   const isSupported =
     typeof navigator.mediaDevices?.getUserMedia === 'function' &&
     typeof MediaRecorder !== 'undefined'
 
-  useEffect(() => {
+  // startPreview uses a callback ref pattern — called once the video element is in the DOM
+  const startPreview = useCallback(async () => {
     if (!isSupported) {
+      console.error('[CameraModal] MediaRecorder or getUserMedia not supported in this browser')
       setPhase('unsupported')
       return
     }
-    startPreview()
-    return () => stopAll()
-  }, [])
-
-  async function startPreview() {
     try {
+      console.log('[CameraModal] Requesting camera + microphone access…')
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      console.log('[CameraModal] Stream obtained. Tracks:', stream.getTracks().map(t => `${t.kind}:${t.label}`))
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
+
+      const video = videoRef.current
+      if (video) {
+        video.srcObject = stream
+        video.muted = true
+        try {
+          await video.play()
+          console.log('[CameraModal] Video preview playing')
+        } catch (playErr) {
+          console.error('[CameraModal] video.play() failed:', playErr)
+        }
+      } else {
+        console.error('[CameraModal] videoRef.current is null — video element not mounted yet')
       }
       setPhase('preview')
     } catch (err) {
+      console.error('[CameraModal] getUserMedia failed:', err.name, err.message)
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setPhase('denied')
       } else {
         setPhase('unsupported')
       }
     }
-  }
+  }, [isSupported])
+
+  // Callback ref: fires once the video element is actually mounted in the DOM
+  const videoCallbackRef = useCallback((node) => {
+    videoRef.current = node
+    if (node) {
+      // Element is now in the DOM — safe to start preview
+      startPreview()
+    }
+  }, [startPreview])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => stopAll()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function startRecording() {
-    if (!streamRef.current) return
+    if (!streamRef.current) {
+      console.error('[CameraModal] startRecording called but streamRef is null')
+      return
+    }
     chunksRef.current = []
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? 'video/webm;codecs=vp9'
       : 'video/webm'
+    console.log('[CameraModal] Starting MediaRecorder, mimeType:', mimeType)
+
     const recorder = new MediaRecorder(streamRef.current, { mimeType })
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    recorder.ondataavailable = e => {
+      console.log('[CameraModal] ondataavailable chunk size:', e.data.size)
+      if (e.data.size > 0) chunksRef.current.push(e.data)
+    }
     recorder.onstop = () => {
+      console.log('[CameraModal] onstop — total chunks:', chunksRef.current.length)
       const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+      console.log('[CameraModal] Blob created, size:', blob.size)
       const url = URL.createObjectURL(blob)
       setRecordedBlob(blob)
       setRecordedUrl(url)
@@ -82,12 +116,14 @@ export default function CameraModal({ onClose, onSave }) {
   function stopAll() {
     clearInterval(timerRef.current)
     streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
     if (recordedUrl) URL.revokeObjectURL(recordedUrl)
   }
 
   async function handleSave() {
     if (!recordedBlob) return
     const filename = `clip-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`
+    console.log('[CameraModal] Saving blob, size:', recordedBlob.size, 'filename:', filename)
 
     // Try File System Access API (Chrome/Edge)
     if (typeof window.showSaveFilePicker === 'function') {
@@ -99,11 +135,13 @@ export default function CameraModal({ onClose, onSave }) {
         const writable = await handle.createWritable()
         await writable.write(recordedBlob)
         await writable.close()
+        console.log('[CameraModal] File saved via File System Access API')
         if (onSave) onSave(recordedBlob, filename)
         handleClose()
         return
       } catch (err) {
         if (err.name === 'AbortError') return // user cancelled picker
+        console.error('[CameraModal] showSaveFilePicker failed:', err)
         // Fall through to download fallback
       }
     }
@@ -122,7 +160,8 @@ export default function CameraModal({ onClose, onSave }) {
     setRecordedBlob(null)
     setRecordedUrl('')
     setElapsed(0)
-    startPreview()
+    setPhase('loading')
+    // startPreview will fire again when the video element re-mounts via callback ref
   }
 
   function handleClose() {
@@ -144,7 +183,7 @@ export default function CameraModal({ onClose, onSave }) {
         <h2 className={styles.heading}>Record a Clip</h2>
 
         {/* Unsupported */}
-        {(phase === 'unsupported') && (
+        {phase === 'unsupported' && (
           <p className={styles.notice}>
             Camera recording is not supported in this browser. Please use Chrome or Edge.
           </p>
@@ -155,6 +194,20 @@ export default function CameraModal({ onClose, onSave }) {
           <p className={styles.notice}>
             Camera access was denied. Please allow camera and microphone access in your browser settings and try again.
           </p>
+        )}
+
+        {/* Loading — video element mounted here so callback ref fires immediately */}
+        {phase === 'loading' && (
+          <>
+            <video
+              ref={videoCallbackRef}
+              className={styles.video}
+              muted
+              playsInline
+              style={{ visibility: 'hidden' }}
+            />
+            <p className={styles.notice}>Starting camera…</p>
+          </>
         )}
 
         {/* Preview / Recording */}

@@ -1,7 +1,27 @@
-.header {
-  margin-bottom: var(--space-2xl);
-  padding-bottom: var(--space-lg);
-  border-bottom: var(--border);
+/* ── Layout wrapper — no max-width constraint at the top level ── */
+.layout {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero section ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-lg);
+  position: relative;
+  text-align: center;
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: 520px;
 }
 
 .title {
@@ -10,42 +30,57 @@
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.subtitle {
-  margin-top: var(--space-sm);
+.appSubtitle {
   color: var(--color-text-secondary);
   font-size: 0.95rem;
-}
-
-/* Seeds of Movement hero section */
-.seedsSection {
-  margin-bottom: var(--space-2xl);
-  padding: var(--space-xl);
-  border: var(--border);
-  background-color: var(--color-surface);
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
 }
 
 .seedsBtn {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  padding: 0.75rem 1.75rem;
+  padding: 0.8rem 2rem;
   letter-spacing: 0.01em;
 }
 
 .seedsHint {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  margin-top: calc(-1 * var(--space-sm));
 }
 
-/* Projects section */
+/* Scroll affordance — bottom of hero */
+.scrollHint {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.scrollHint:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+/* ── Projects section ── */
 .projectsSection {
+  border-top: var(--border);
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.projectsInner {
+  max-width: 760px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
@@ -85,8 +120,18 @@
   gap: var(--space-xs);
 }
 
+.projectItem {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.projectItem:hover .trashBtn {
+  opacity: 1;
+}
+
 .projectBtn {
-  width: 100%;
+  flex: 1;
   text-align: left;
   background: transparent;
   border: var(--border);
@@ -102,4 +147,45 @@
   background-color: var(--color-surface);
   border-color: var(--color-accent-primary);
   color: var(--color-accent-primary);
+}
+
+.trashBtn {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0 0.75rem;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.trashBtn:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger);
+}
+
+/* Trash link */
+.trashLink {
+  padding-top: var(--space-lg);
+  border-top: var(--border);
+}
+
+.trashLinkBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.trashLinkBtn:hover {
+  color: var(--color-text-primary);
 }

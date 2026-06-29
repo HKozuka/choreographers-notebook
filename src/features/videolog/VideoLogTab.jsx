@@ -89,15 +89,18 @@ export default function VideoLogTab({ projectId }) {
   // Called by CameraModal with (blob, suggestedFilename)
   const handleCameraSave = useCallback(async (blob, filename) => {
     if (!dirHandle) return
+    console.log('[VideoLogTab] Writing blob to folder, size:', blob.size, 'filename:', filename)
     try {
       const fileHandle = await dirHandle.getFileHandle(filename, { create: true })
       const writable = await fileHandle.createWritable()
       await writable.write(blob)
       await writable.close()
+      console.log('[VideoLogTab] File written successfully:', filename)
       // Refresh list
       await enumerateFiles(dirHandle)
       setStatusMsg(`Saved "${filename}" to folder.`)
-    } catch {
+    } catch (err) {
+      console.error('[VideoLogTab] Folder write failed:', err)
       setStatusMsg('Could not save recording to folder.')
     }
   }, [dirHandle])

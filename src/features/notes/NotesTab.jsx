@@ -1,63 +1,167 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import styles from './NotesTab.module.css'
 
+const AUTOSAVE_INTERVAL = 10000 // 10 seconds
+
+function notesKey(projectId) {
+  return `project_notes_${projectId}`
+}
+
+function migrateAndLoad(projectId) {
+  // Migrate old flat keys to new multi-page format if present
+  const oldTextKey = `project_notes_text_${projectId}`
+  const oldDrawKey = `project_notes_drawing_${projectId}`
+  const oldText = localStorage.getItem(oldTextKey)
+  const oldDraw = localStorage.getItem(oldDrawKey)
+
+  if (oldText !== null || oldDraw !== null) {
+    const migrated = {
+      activePage: 0,
+      pages: [{ text: oldText || '', drawing: oldDraw || null }],
+    }
+    localStorage.setItem(notesKey(projectId), JSON.stringify(migrated))
+    localStorage.removeItem(oldTextKey)
+    localStorage.removeItem(oldDrawKey)
+    return migrated
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(notesKey(projectId)))
+    if (saved && Array.isArray(saved.pages) && saved.pages.length > 0) {
+      return saved
+    }
+  } catch { /* fall through */ }
+
+  return { activePage: 0, pages: [{ text: '', drawing: null }] }
+}
+
 export default function NotesTab({ projectId }) {
+  const key = notesKey(projectId)
+
+  const initial = migrateAndLoad(projectId)
+  const [pages, setPages] = useState(initial.pages)
+  const [activePage, setActivePage] = useState(initial.activePage)
   const [mode, setMode] = useState('type') // 'type' | 'draw'
-  const [text, setText] = useState('')
+  const [lastSaved, setLastSaved] = useState(null)
+  const [savedAgo, setSavedAgo] = useState('')
+
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
   const lastPoint = useRef(null)
+  // Keep a ref mirror of pages so autosave closure always has latest value
+  const pagesRef = useRef(pages)
+  const activePageRef = useRef(activePage)
 
-  const textKey = `project_notes_text_${projectId}`
-  const drawKey = `project_notes_drawing_${projectId}`
+  useEffect(() => { pagesRef.current = pages }, [pages])
+  useEffect(() => { activePageRef.current = activePage }, [activePage])
 
-  // ── Load persisted text on mount
+  // ── Autosave every 10s
   useEffect(() => {
-    const saved = localStorage.getItem(textKey)
-    if (saved) setText(saved)
-  }, [textKey])
+    const interval = setInterval(() => {
+      const snapshot = {
+        activePage: activePageRef.current,
+        pages: pagesRef.current,
+      }
+      localStorage.setItem(key, JSON.stringify(snapshot))
+      setLastSaved(new Date())
+    }, AUTOSAVE_INTERVAL)
+    return () => clearInterval(interval)
+  }, [key])
 
-  // ── Persist text on change
+  // ── "Saved X ago" ticker — updates every 5s
   useEffect(() => {
-    localStorage.setItem(textKey, text)
-  }, [text, textKey])
+    if (!lastSaved) return
+    const tick = setInterval(() => {
+      const secs = Math.round((Date.now() - lastSaved.getTime()) / 1000)
+      if (secs < 60) setSavedAgo(`Saved ${secs}s ago`)
+      else setSavedAgo(`Saved ${Math.floor(secs / 60)}m ago`)
+    }, 5000)
+    // Set immediately on first save
+    setSavedAgo('Saved just now')
+    return () => clearInterval(tick)
+  }, [lastSaved])
 
-  // ── Restore drawing when switching to draw mode
+  // ── Restore drawing for the current page when entering draw mode or switching pages
   useEffect(() => {
     if (mode !== 'draw') return
     const canvas = canvasRef.current
     if (!canvas) return
-    const saved = localStorage.getItem(drawKey)
-    if (saved) {
+
+    const { width, height } = canvas.getBoundingClientRect()
+    canvas.width = width || 700
+    canvas.height = height || 480
+
+    const drawing = pages[activePage]?.drawing
+    if (drawing) {
       const img = new Image()
       img.onload = () => {
-        const ctx = canvas.getContext('2d')
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0)
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+        canvas.getContext('2d').drawImage(img, 0, 0)
       }
-      img.src = saved
+      img.src = drawing
+    } else {
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
     }
-  }, [mode, drawKey])
+  }, [mode, activePage]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Resize canvas to match its display size
-  useEffect(() => {
-    if (mode !== 'draw') return
+  // ── Save current canvas drawing back into pages state before leaving draw mode or switching pages
+  function captureDrawing() {
     const canvas = canvasRef.current
-    if (!canvas) return
-    const { width, height } = canvas.getBoundingClientRect()
-    if (canvas.width !== width || canvas.height !== height) {
-      // Preserve existing drawing across resize
-      const saved = localStorage.getItem(drawKey)
-      canvas.width = width
-      canvas.height = height
-      if (saved) {
-        const img = new Image()
-        img.onload = () => canvas.getContext('2d').drawImage(img, 0, 0)
-        img.src = saved
-      }
-    }
-  }, [mode, drawKey])
+    if (!canvas) return null
+    return canvas.toDataURL()
+  }
 
+  function saveCurrentPageState(overrideText) {
+    setPages(prev => {
+      const updated = [...prev]
+      updated[activePage] = {
+        ...updated[activePage],
+        drawing: mode === 'draw' ? captureDrawing() : updated[activePage].drawing,
+        text: overrideText !== undefined ? overrideText : updated[activePage].text,
+      }
+      return updated
+    })
+  }
+
+  // ── Text changes
+  function handleTextInput(e) {
+    const html = e.currentTarget.innerHTML
+    setPages(prev => {
+      const updated = [...prev]
+      updated[activePage] = { ...updated[activePage], text: html }
+      return updated
+    })
+  }
+
+  // ── Page navigation
+  function goToPage(newIndex) {
+    // Capture drawing before switching
+    if (mode === 'draw') {
+      const drawing = captureDrawing()
+      setPages(prev => {
+        const updated = [...prev]
+        updated[activePage] = { ...updated[activePage], drawing }
+        return updated
+      })
+    }
+    setActivePage(newIndex)
+  }
+
+  function addPage() {
+    if (mode === 'draw') {
+      const drawing = captureDrawing()
+      setPages(prev => {
+        const updated = [...prev]
+        updated[activePage] = { ...updated[activePage], drawing }
+        return [...updated, { text: '', drawing: null }]
+      })
+    } else {
+      setPages(prev => [...prev, { text: '', drawing: null }])
+    }
+    setActivePage(pages.length) // new page index
+  }
+
+  // ── Drawing
   function getPos(e, canvas) {
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
@@ -88,7 +192,7 @@ export default function NotesTab({ projectId }) {
     ctx.beginPath()
     ctx.moveTo(prev.x, prev.y)
     ctx.lineTo(current.x, current.y)
-    ctx.strokeStyle = 'var(--color-text-primary, #1C1C1A)'
+    ctx.strokeStyle = '#1C1C1A'
     ctx.lineWidth = Math.max(1, current.pressure * 4)
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -101,44 +205,64 @@ export default function NotesTab({ projectId }) {
     if (!isDrawing.current) return
     isDrawing.current = false
     lastPoint.current = null
-    // Persist drawing
-    const canvas = canvasRef.current
-    if (canvas) {
-      localStorage.setItem(drawKey, canvas.toDataURL())
-    }
-  }, [drawKey])
+    // Capture into pages state immediately so autosave picks it up
+    const drawing = captureDrawing()
+    setPages(prev => {
+      const updated = [...prev]
+      updated[activePageRef.current] = { ...updated[activePageRef.current], drawing }
+      return updated
+    })
+  }, [])
 
   function handleClear() {
     const canvas = canvasRef.current
     if (!canvas) return
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
-    localStorage.removeItem(drawKey)
+    setPages(prev => {
+      const updated = [...prev]
+      updated[activePage] = { ...updated[activePage], drawing: null }
+      return updated
+    })
   }
 
   function execFormat(cmd) {
     document.execCommand(cmd, false, null)
   }
 
+  // Mode switch — capture drawing before leaving draw mode
+  function switchMode(newMode) {
+    if (mode === 'draw' && newMode === 'type') {
+      const drawing = captureDrawing()
+      setPages(prev => {
+        const updated = [...prev]
+        updated[activePage] = { ...updated[activePage], drawing }
+        return updated
+      })
+    }
+    setMode(newMode)
+  }
+
+  const currentPage = pages[activePage] || { text: '', drawing: null }
+
   return (
     <div className={styles.container}>
-      {/* Mode toggle */}
+      {/* Top toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.modeToggle}>
           <button
             className={`${styles.toggleBtn} ${mode === 'type' ? styles.toggleActive : ''}`}
-            onClick={() => setMode('type')}
+            onClick={() => switchMode('type')}
           >
             Type
           </button>
           <button
             className={`${styles.toggleBtn} ${mode === 'draw' ? styles.toggleActive : ''}`}
-            onClick={() => setMode('draw')}
+            onClick={() => switchMode('draw')}
           >
             Draw
           </button>
         </div>
 
-        {/* Formatting toolbar — visible in type mode */}
         {mode === 'type' && (
           <div className={styles.formatBar}>
             <button className={styles.fmtBtn} onClick={() => execFormat('bold')} title="Bold"><strong>B</strong></button>
@@ -147,7 +271,6 @@ export default function NotesTab({ projectId }) {
           </div>
         )}
 
-        {/* Clear button — visible in draw mode */}
         {mode === 'draw' && (
           <button className="btn-secondary" onClick={handleClear}>
             Clear drawing
@@ -158,11 +281,12 @@ export default function NotesTab({ projectId }) {
       {/* Type mode */}
       {mode === 'type' && (
         <div
+          key={`type-${activePage}`}
           className={styles.editor}
           contentEditable
           suppressContentEditableWarning
-          onInput={e => setText(e.currentTarget.innerHTML)}
-          dangerouslySetInnerHTML={{ __html: text }}
+          onInput={handleTextInput}
+          dangerouslySetInnerHTML={{ __html: currentPage.text }}
         />
       )}
 
@@ -176,6 +300,39 @@ export default function NotesTab({ projectId }) {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         />
+      )}
+
+      {/* Page navigation */}
+      <div className={styles.pageNav}>
+        <div className={styles.pageNavLeft}>
+          <button
+            className={styles.pageNavBtn}
+            onClick={() => goToPage(activePage - 1)}
+            disabled={activePage === 0}
+            aria-label="Previous page"
+          >
+            ←
+          </button>
+          <span className={styles.pageIndicator}>
+            Page {activePage + 1} of {pages.length}
+          </span>
+          <button
+            className={styles.pageNavBtn}
+            onClick={() => goToPage(activePage + 1)}
+            disabled={activePage === pages.length - 1}
+            aria-label="Next page"
+          >
+            →
+          </button>
+        </div>
+        <button className={styles.addPageBtn} onClick={addPage}>
+          + Add page
+        </button>
+      </div>
+
+      {/* Saved indicator */}
+      {savedAgo && (
+        <span className={styles.savedLabel}>{savedAgo}</span>
       )}
     </div>
   )
