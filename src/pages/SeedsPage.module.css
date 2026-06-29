@@ -8,6 +8,14 @@
   border-bottom: var(--border);
 }
 
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
 .title {
   font-family: var(--font-display);
   font-size: 2rem;

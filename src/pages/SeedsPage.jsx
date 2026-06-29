@@ -6,6 +6,7 @@ import {
   ABSTRACT_MODE_PROMPT,
   VOCABULARY_EXPANDER_PROMPT,
 } from '../data/systemPrompts'
+import CameraModal from '../components/CameraModal'
 import styles from './SeedsPage.module.css'
 
 const MODES = [
@@ -36,6 +37,7 @@ export default function SeedsPage() {
   const [response, setResponse] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const currentMode = MODES.find(m => m.key === activeMode)
 
@@ -60,6 +62,13 @@ export default function SeedsPage() {
 
   return (
     <div className="page">
+      {cameraOpen && (
+        <CameraModal
+          onClose={() => setCameraOpen(false)}
+          onSave={() => setCameraOpen(false)}
+        />
+      )}
+
       <nav className={styles.nav}>
         <button className="btn-secondary" onClick={() => navigate('/')}>
           ← Notebook
@@ -67,7 +76,17 @@ export default function SeedsPage() {
       </nav>
 
       <header className={styles.header}>
-        <h1 className={styles.title}>Seeds of Movement</h1>
+        <div className={styles.headerRow}>
+          <h1 className={styles.title}>Seeds of Movement</h1>
+          <button
+            className="btn-secondary"
+            onClick={() => setCameraOpen(true)}
+            aria-label="Record a movement clip"
+            title="Record a clip"
+          >
+            ⏺ Record
+          </button>
+        </div>
         <p className={styles.subtitle}>
           An AI ideation workspace for movement scores, cues, and vocabulary expansion.
         </p>
