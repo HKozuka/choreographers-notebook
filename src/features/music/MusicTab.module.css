@@ -1,0 +1,246 @@
+/* MusicTab.module.css */
+
+.container {
+  padding: var(--space-lg) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Browser warning ── */
+.browserWarning {
+  background: var(--color-surface);
+  border: var(--border);
+  border-left: 3px solid var(--color-accent-primary);
+  border-radius: var(--radius);
+  padding: var(--space-md) var(--space-lg);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.browserWarning strong {
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+/* ── Status message ── */
+.statusMsg {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+}
+
+/* ── Grant access section ── */
+.grantSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-xl) 0;
+}
+
+.hint {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-family: var(--font-display);
+  line-height: 1.6;
+}
+
+/* ── Folder row ── */
+.folderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+  border-bottom: var(--border);
+}
+
+.folderName {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+}
+
+.folderName strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.folderActions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Recording button — live state */
+.recordingBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.recDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e8e8e8;
+  flex-shrink: 0;
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Review section ── */
+.reviewSection {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.reviewLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+}
+
+.audioReview {
+  width: 100%;
+}
+
+.reviewActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* ── Active player ── */
+.playerSection {
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.playerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--border);
+}
+
+.nowPlaying {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(100% - 3rem);
+}
+
+.closePlayer {
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.closePlayer:hover {
+  color: var(--color-text-primary);
+  background: var(--color-border);
+}
+
+.audioPlayer {
+  width: 100%;
+  display: block;
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* ── File list ── */
+.fileList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileItem {
+  display: flex;
+}
+
+.fileBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.fileBtn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-accent-primary);
+}
+
+.fileBtnActive {
+  background: var(--color-surface);
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.fileIcon {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.fileBtnActive .fileIcon {
+  color: var(--color-accent-primary);
+}
+
+.fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Empty state ── */
+.emptyState {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: var(--space-lg) 0;
+}
