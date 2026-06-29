@@ -38,14 +38,24 @@ function migrateAndLoad(projectId) {
 export default function NotesTab({ projectId }) {
   const key = notesKey(projectId)
 
-  const initial = migrateAndLoad(projectId)
-  const [pages, setPages] = useState(initial.pages)
-  const [activePage, setActivePage] = useState(initial.activePage)
+  // migrateAndLoad runs once — lazy initializer avoids repeated localStorage reads on re-render
+  const [pages, setPages] = useState(() => {
+    const d = migrateAndLoad(projectId)
+    return d.pages
+  })
+  const [activePage, setActivePage] = useState(() => {
+    // Read from the already-migrated key (migration ran above during pages init)
+    try {
+      const saved = JSON.parse(localStorage.getItem(notesKey(projectId)))
+      return saved?.activePage ?? 0
+    } catch { return 0 }
+  })
   const [mode, setMode] = useState('type') // 'type' | 'draw'
   const [lastSaved, setLastSaved] = useState(null)
   const [savedAgo, setSavedAgo] = useState('')
 
   const canvasRef = useRef(null)
+  const editorRef = useRef(null)       // ref to the contentEditable div
   const isDrawing = useRef(false)
   const lastPoint = useRef(null)
   // Keep a ref mirror of pages so autosave closure always has latest value
@@ -80,6 +90,19 @@ export default function NotesTab({ projectId }) {
     setSavedAgo('Saved just now')
     return () => clearInterval(tick)
   }, [lastSaved])
+
+  // ── Seed the contentEditable with the correct page content on page change or mode switch
+  // This is the ONLY place innerHTML is set — never via dangerouslySetInnerHTML in the live render
+  useEffect(() => {
+    if (mode !== 'type') return
+    const el = editorRef.current
+    if (!el) return
+    const html = pages[activePage]?.text || ''
+    // Only update DOM if it actually differs — avoids cursor disruption on unrelated re-renders
+    if (el.innerHTML !== html) {
+      el.innerHTML = html
+    }
+  }, [activePage, mode]) // intentionally exclude `pages` — DOM is owned by the editor after mount
 
   // ── Restore drawing for the current page when entering draw mode or switching pages
   useEffect(() => {
@@ -282,11 +305,11 @@ export default function NotesTab({ projectId }) {
       {mode === 'type' && (
         <div
           key={`type-${activePage}`}
+          ref={editorRef}
           className={styles.editor}
           contentEditable
           suppressContentEditableWarning
           onInput={handleTextInput}
-          dangerouslySetInnerHTML={{ __html: currentPage.text }}
         />
       )}
 
