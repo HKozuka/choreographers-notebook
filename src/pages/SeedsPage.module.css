@@ -167,3 +167,146 @@
   color: var(--color-text-primary);
   white-space: pre-wrap;
 }
+
+/* ── Project context selector ── */
+.contextSection {
+  margin-bottom: var(--space-md);
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.contextToggleBtn {
+  width: 100%;
+  text-align: left;
+  background: var(--color-surface);
+  border: none;
+  border-radius: 0;
+  padding: 0.6rem var(--space-md);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  transition: color 0.15s ease;
+}
+
+.contextToggleBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.contextToggleIcon {
+  font-size: 0.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.contextActivePill {
+  margin-left: auto;
+  background: var(--color-accent-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextPanel {
+  border-top: var(--border);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.contextEmpty {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  padding: var(--space-xs) 0;
+}
+
+.contextList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contextItem {
+  display: flex;
+}
+
+.contextLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius);
+  width: 100%;
+  transition: background-color 0.12s ease;
+  font-size: 0.88rem;
+}
+
+.contextLabel:hover {
+  background-color: var(--color-surface);
+}
+
+.contextRadio {
+  accent-color: var(--color-accent-primary);
+  flex-shrink: 0;
+}
+
+.contextProjectName {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+}
+
+.contextNoNotes {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-left: auto;
+}
+
+.contextClearBtn {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.contextClearBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.contextActiveLabel {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  margin-bottom: var(--space-sm);
+  padding: 0.4rem var(--space-sm);
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--color-accent-primary);
+}
+
+.contextActiveLabel strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}

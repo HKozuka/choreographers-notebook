@@ -76,13 +76,26 @@ export default function VideoLogTab({ projectId }) {
   }
 
   async function handleFileClick(fileEntry) {
+    // Re-verify permission in response to the user's click (a user gesture).
+    // This is necessary when the directory handle was restored from IndexedDB:
+    // requestPermission() called outside a user gesture silently returns 'prompt'
+    // rather than 'granted', so getFile() would throw NotAllowedError.
+    if (dirHandle) {
+      const ok = await verifyPermission(dirHandle)
+      if (!ok) {
+        setStatusMsg('Folder permission required — please click "Grant folder access" again.')
+        setDirHandle(null)
+        return
+      }
+    }
     try {
       if (activeFile) URL.revokeObjectURL(activeFile.url)
       const file = await fileEntry.handle.getFile()
       const url = URL.createObjectURL(file)
       setActiveFile({ name: fileEntry.name, url })
-    } catch {
-      setStatusMsg('Could not open file for playback.')
+    } catch (err) {
+      console.error('[VideoLogTab] getFile() failed:', err.name, err.message)
+      setStatusMsg(`Could not open "${fileEntry.name}" — ${err.message || 'permission error'}.`)
     }
   }
 

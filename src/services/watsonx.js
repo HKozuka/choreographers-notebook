@@ -1,9 +1,14 @@
 // ─── IBM watsonx.ai API service ───
 // Model: ibm/granite-3-2b-instruct (fixed — quality carried by system prompts)
 // Region: us-south
+//
+// All requests are routed through the Vite dev-server proxy (/api/iam and
+// /api/watsonx) to avoid browser CORS restrictions on the IBM endpoints.
+// See vite.config.js for proxy configuration.
 
-const IAM_TOKEN_URL = 'https://iam.cloud.ibm.com/identity/token'
-const WATSONX_URL = 'https://us-south.ml.cloud.ibm.com/ml/v1/text/generation?version=2023-05-29'
+const IAM_TOKEN_PATH = '/api/iam/identity/token'
+// Use 2024-05-01 which supports the chat completions endpoint for Granite models
+const WATSONX_CHAT_PATH = '/api/watsonx/ml/v1/text/chat?version=2024-05-01'
 
 let cachedToken = null
 let tokenExpiry = 0
@@ -19,14 +24,15 @@ async function getIAMToken() {
     throw new Error('VITE_WATSONX_API_KEY is not set in your .env file.')
   }
 
-  const response = await fetch(IAM_TOKEN_URL, {
+  const response = await fetch(IAM_TOKEN_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey=${encodeURIComponent(apiKey)}`,
   })
 
   if (!response.ok) {
-    throw new Error(`IAM token exchange failed: ${response.status} ${response.statusText}`)
+    const errText = await response.text()
+    throw new Error(`IAM token exchange failed: ${response.status} — ${errText}`)
   }
 
   const data = await response.json()
@@ -37,12 +43,17 @@ async function getIAMToken() {
 }
 
 /**
- * Generate text using IBM watsonx.ai
+ * Generate text using IBM watsonx.ai chat completions endpoint.
  * @param {string} systemPrompt - The mode-specific system prompt
  * @param {string} userPrompt - The user's input
  * @returns {Promise<string>} - The generated text
  */
-export async function generateText(systemPrompt, userPrompt) {
+/**
+ * @param {string} systemPrompt
+ * @param {string} userPrompt
+ * @param {string|null} contextBlock - Optional project context prepended as a user message
+ */
+export async function generateText(systemPrompt, userPrompt, contextBlock = null) {
   const projectId = import.meta.env.VITE_WATSONX_PROJECT_ID
   if (!projectId) {
     throw new Error('VITE_WATSONX_PROJECT_ID is not set in your .env file.')
@@ -50,7 +61,7 @@ export async function generateText(systemPrompt, userPrompt) {
 
   const token = await getIAMToken()
 
-  const response = await fetch(WATSONX_URL, {
+  const response = await fetch(WATSONX_CHAT_PATH, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -59,13 +70,14 @@ export async function generateText(systemPrompt, userPrompt) {
     body: JSON.stringify({
       model_id: 'ibm/granite-3-2b-instruct',
       project_id: projectId,
-      input: userPrompt,
-      parameters: {
-        decoding_method: 'greedy',
-        max_new_tokens: 800,
-        repetition_penalty: 1.1,
-      },
-      system_prompt: systemPrompt,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...(contextBlock ? [{ role: 'user', content: contextBlock }, { role: 'assistant', content: 'Understood. I have the project context.' }] : []),
+        { role: 'user',   content: userPrompt },
+      ],
+      // max_tokens is the correct field name for the chat endpoint
+      max_tokens: 800,
+      temperature: 0,
     }),
   })
 
@@ -75,6 +87,14 @@ export async function generateText(systemPrompt, userPrompt) {
   }
 
   const data = await response.json()
-  // Response shape: { results: [{ generated_text: string }] }
-  return data.results?.[0]?.generated_text?.trim() || ''
+  // Chat response shape: { choices: [{ message: { content: string } }] }
+  // Also handle watsonx-specific shape: { results: [{ generated_text: string }] }
+  const text =
+    data.choices?.[0]?.message?.content?.trim() ||
+    data.results?.[0]?.generated_text?.trim()
+  if (!text) {
+    console.error('[watsonx] Unexpected response shape:', JSON.stringify(data).slice(0, 400))
+    throw new Error('watsonx.ai returned an empty response. Check the browser console for details.')
+  }
+  return text
 }

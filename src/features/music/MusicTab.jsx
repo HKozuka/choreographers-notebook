@@ -89,13 +89,25 @@ export default function MusicTab({ projectId }) {
   }
 
   async function handleFileClick(fileEntry) {
+    // Re-verify permission inside the user-gesture context of the click.
+    // requestPermission() called outside a user gesture (e.g. in a .then() on
+    // mount) silently returns 'prompt', so getFile() throws NotAllowedError.
+    if (dirHandle) {
+      const ok = await verifyPermission(dirHandle)
+      if (!ok) {
+        setStatusMsg('Folder permission required — please click "Grant folder access" again.')
+        setDirHandle(null)
+        return
+      }
+    }
     try {
       if (activeFile?.url) URL.revokeObjectURL(activeFile.url)
       const file = await fileEntry.handle.getFile()
       const url = URL.createObjectURL(file)
       setActiveFile({ name: fileEntry.name, url })
-    } catch {
-      setStatusMsg('Could not open file for playback.')
+    } catch (err) {
+      console.error('[MusicTab] getFile() failed:', err.name, err.message)
+      setStatusMsg(`Could not open "${fileEntry.name}" — ${err.message || 'permission error'}.`)
     }
   }
 
