@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { loadHandle, saveHandle } from '../../utils/folderAccess'
 import styles from './TimelineTab.module.css'
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -6,9 +7,40 @@ import styles from './TimelineTab.module.css'
 const PIXELS_PER_SECOND = 40   // how many px = 1 second on the timeline
 const LANE_KEYS = ['video', 'audio', 'notes']
 const LANE_LABELS = { video: 'Video', audio: 'Audio', notes: 'Notes' }
+const MEDIA_LANES = ['video', 'audio']
 const DEFAULT_NOTE_DURATION = 5  // seconds, when clicking without dragging
 const MIN_DURATION = 0.5         // minimum clip duration in seconds
 const TIMELINE_STORAGE_PREFIX = 'project_timeline_'
+const VIDEO_EXTS = new Set(['.mp4', '.webm', '.mov', '.mkv', '.avi'])
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.aac', '.flac', '.m4a', '.webm', '.ogg'])
+
+function getExt(name) {
+  const i = name.lastIndexOf('.')
+  return i >= 0 ? name.slice(i).toLowerCase() : ''
+}
+
+function laneFolderKey(lane, projectId) {
+  return lane === 'video' ? `video_folder_handle_${projectId}` : `music_folder_handle_${projectId}`
+}
+
+/** Verify (and if needed request) read permission on a directory handle. */
+async function verifyPermission(handle, mode = 'read') {
+  const opts = { mode }
+  if ((await handle.queryPermission(opts)) === 'granted') return true
+  if ((await handle.requestPermission(opts)) === 'granted') return true
+  return false
+}
+
+/** Resolve a media file's duration by loading its metadata off-DOM. */
+function getMediaDuration(url, lane) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement(lane === 'video' ? 'video' : 'audio')
+    el.preload = 'metadata'
+    el.onloadedmetadata = () => resolve(el.duration || MIN_DURATION)
+    el.onerror = () => reject(new Error('Could not read media duration'))
+    el.src = url
+  })
+}
 
 // ── Storage helpers ─────────────────────────────────────────────────────────
 
@@ -59,6 +91,13 @@ function hasCollision(clips, lane, start, dur, excludeId = null) {
   })
 }
 
+/** Start time right after the last clip in a lane, or 0 if the lane is empty. */
+function nextGapStart(clips, lane) {
+  const laneClips = clips.filter(c => c.lane === lane)
+  if (!laneClips.length) return 0
+  return Math.max(...laneClips.map(c => c.startTime + c.duration))
+}
+
 /** Clamp a clip's start time so it doesn't collide and stays >= 0. */
 function clampedStart(clips, lane, desiredStart, duration, excludeId) {
   let start = Math.max(0, desiredStart)
@@ -88,6 +127,9 @@ export default function TimelineTab({ projectId }) {
   const [notePopup, setNotePopup] = useState(null)  // { clipId, x, y }
   const [dragging, setDragging] = useState(null)    // { type: 'clip'|'edge', clipId, edge?, offsetSec }
   const [drawing, setDrawing] = useState(null)      // { lane, startSec } — new note clip being drawn
+  const [mediaPicker, setMediaPicker] = useState(null) // { lane, desiredStart, status, files, error }
+  const [statusMsg, setStatusMsg] = useState('')
+  const [isSupported] = useState(() => typeof window.showDirectoryPicker === 'function')
 
   const animFrameRef = useRef(null)
   const lastTimeRef = useRef(null)
@@ -95,13 +137,53 @@ export default function TimelineTab({ projectId }) {
   const audioRefs = useRef({})        // clipId → <audio> element
   const containerRef = useRef(null)
   const noteInputRef = useRef(null)
+  const suppressLaneClickRef = useRef(false)
 
   const duration = totalDuration(clips)
 
   // ── Persist on every clips change
+  // Blob URLs don't survive a reload, so media clips are saved without
+  // fileUrl and reconnected to their source file by the relink effect below.
   useEffect(() => {
-    saveTimeline(projectId, { clips })
+    const toSave = clips.map(c =>
+      MEDIA_LANES.includes(c.lane) ? { ...c, fileUrl: undefined } : c
+    )
+    saveTimeline(projectId, { clips: toSave })
   }, [projectId, clips])
+
+  // ── On mount: reconnect persisted media clips to their source file
+  useEffect(() => {
+    if (!isSupported) return
+    let cancelled = false
+
+    async function relink() {
+      for (const lane of MEDIA_LANES) {
+        const laneClips = clips.filter(c => c.lane === lane && c.name && !c.fileUrl)
+        if (!laneClips.length) continue
+        const handle = await loadHandle(laneFolderKey(lane, projectId))
+        if (!handle) continue
+        const ok = await verifyPermission(handle)
+        if (!ok) continue
+        const byName = new Map()
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file') byName.set(entry.name, entry)
+        }
+        for (const clip of laneClips) {
+          const entry = byName.get(clip.name)
+          if (!entry) continue
+          try {
+            const file = await entry.getFile()
+            const url = URL.createObjectURL(file)
+            if (cancelled) { URL.revokeObjectURL(url); return }
+            setClips(prev => prev.map(c => c.id === clip.id ? { ...c, fileUrl: url } : c))
+          } catch { /* leave unlinked; user can re-add if the file moved */ }
+        }
+      }
+    }
+    relink()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Focus note input when popup opens
   useEffect(() => {
@@ -218,6 +300,7 @@ export default function TimelineTab({ projectId }) {
     if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
+    suppressLaneClickRef.current = true
     const rect = e.currentTarget.closest('[data-lane]').getBoundingClientRect()
     const clickSec = (e.clientX - rect.left) / PIXELS_PER_SECOND
     const offsetSec = clickSec - clip.startTime
@@ -248,6 +331,7 @@ export default function TimelineTab({ projectId }) {
     if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
+    suppressLaneClickRef.current = true
     const rect = e.currentTarget.closest('[data-lane]').getBoundingClientRect()
 
     setDragging({ type: 'edge', clipId: clip.id, edge })
@@ -314,8 +398,77 @@ export default function TimelineTab({ projectId }) {
 
   // ── Delete a clip
   function deleteClip(clipId) {
-    setClips(prev => prev.filter(c => c.id !== clipId))
+    setClips(prev => {
+      const clip = prev.find(c => c.id === clipId)
+      if (clip?.fileUrl) URL.revokeObjectURL(clip.fileUrl)
+      return prev.filter(c => c.id !== clipId)
+    })
     if (notePopup?.clipId === clipId) setNotePopup(null)
+  }
+
+  // ── Toggle mute on a video/audio clip
+  function toggleMute(clipId) {
+    setClips(prev => prev.map(c => c.id === clipId ? { ...c, muted: !c.muted } : c))
+  }
+
+  // ── Open the media picker for a lane, prompting for folder access if needed
+  async function openMediaPicker(lane, desiredStart = null) {
+    if (!isSupported) {
+      setStatusMsg('Adding video/audio clips requires Chrome or Edge on desktop.')
+      return
+    }
+    setMediaPicker({ lane, desiredStart, status: 'loading', files: [] })
+    const key = laneFolderKey(lane, projectId)
+    let handle = await loadHandle(key)
+    if (handle && !(await verifyPermission(handle))) handle = null
+    if (!handle) {
+      try {
+        handle = await window.showDirectoryPicker({ mode: 'read' })
+        await saveHandle(key, handle)
+      } catch (err) {
+        setMediaPicker(null)
+        if (err.name !== 'AbortError') setStatusMsg('Could not open folder. Please try again.')
+        return
+      }
+    }
+    try {
+      const exts = lane === 'video' ? VIDEO_EXTS : AUDIO_EXTS
+      const found = []
+      for await (const entry of handle.values()) {
+        if (entry.kind === 'file' && exts.has(getExt(entry.name))) found.push(entry)
+      }
+      found.sort((a, b) => a.name.localeCompare(b.name))
+      setMediaPicker({ lane, desiredStart, status: 'ready', files: found })
+    } catch {
+      setMediaPicker({ lane, desiredStart, status: 'error', files: [], error: 'Could not read folder contents.' })
+    }
+  }
+
+  // ── User picked a file from the media picker — add it as a clip
+  async function handleSelectMediaFile(entry) {
+    const { lane, desiredStart } = mediaPicker
+    setMediaPicker(m => ({ ...m, status: 'loading' }))
+    try {
+      const file = await entry.getFile()
+      const url = URL.createObjectURL(file)
+      const dur = await getMediaDuration(url, lane)
+      setClips(prev => {
+        const start = clampedStart(prev, lane, desiredStart ?? nextGapStart(prev, lane), dur, null)
+        return [...prev, { id: generateId(), lane, startTime: start, duration: dur, name: entry.name, fileUrl: url, muted: false }]
+      })
+      setMediaPicker(null)
+    } catch (err) {
+      setMediaPicker(m => ({ ...m, status: 'error', error: err.message || 'Could not load that file.' }))
+    }
+  }
+
+  // ── Click on empty video/audio lane background opens the media picker
+  function handleMediaLaneClick(e, lane) {
+    if (suppressLaneClickRef.current) { suppressLaneClickRef.current = false; return }
+    if (e.target !== e.currentTarget) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const startSec = Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND)
+    openMediaPicker(lane, startSec)
   }
 
   // ── Open note popup
@@ -372,9 +525,12 @@ export default function TimelineTab({ projectId }) {
         <span className={styles.timecode}>{formatTime(playhead)}</span>
         <div className={styles.transportSpacer} />
         <span className={styles.hint}>
-          Click notes lane to place a note clip · Drag clips to reposition · Drag edges to resize
+          Click a lane or the + button to add a clip · Drag clips to reposition · Drag edges to resize
         </span>
       </div>
+
+      {/* Status message */}
+      {statusMsg && <p className={styles.statusMsg}>{statusMsg}</p>}
 
       {/* Video preview (only visible when video clips are loaded) */}
       {clips.some(c => c.lane === 'video' && c.fileUrl) && (
@@ -385,6 +541,7 @@ export default function TimelineTab({ projectId }) {
               ref={el => { if (el) videoRefs.current[clip.id] = el; else delete videoRefs.current[clip.id] }}
               src={clip.fileUrl}
               className={`${styles.previewVideo} ${activeVideoClip?.id === clip.id ? styles.previewVideoActive : ''}`}
+              muted={!!clip.muted}
               playsInline
             />
           ))}
@@ -401,13 +558,14 @@ export default function TimelineTab({ projectId }) {
           key={clip.id}
           ref={el => { if (el) audioRefs.current[clip.id] = el; else delete audioRefs.current[clip.id] }}
           src={clip.fileUrl}
+          muted={!!clip.muted}
           style={{ display: 'none' }}
         />
       ))}
 
       {/* Timeline scroll container */}
       <div className={styles.timelineScroll} ref={containerRef}>
-        <div className={styles.timelineInner} style={{ width: timelineWidth + 80 }}>
+        <div className={styles.timelineInner} style={{ width: timelineWidth + 80 + 48 }}>
           {/* Lane labels column */}
           <div className={styles.labelCol}>
             <div className={styles.rulerLabel} />
@@ -445,6 +603,7 @@ export default function TimelineTab({ projectId }) {
                 style={{ width: timelineWidth }}
                 data-lane={lane}
                 onPointerDown={lane === 'notes' ? handleNoteLanePointerDown : undefined}
+                onClick={MEDIA_LANES.includes(lane) ? (e => handleMediaLaneClick(e, lane)) : undefined}
               >
                 {/* Drawing ghost for new note clip */}
                 {drawing && drawing.lane === lane && (
@@ -466,6 +625,7 @@ export default function TimelineTab({ projectId }) {
                     onEdgePointerDown={handleEdgePointerDown}
                     onDelete={deleteClip}
                     onNoteClick={openNotePopup}
+                    onToggleMute={toggleMute}
                     isDragging={dragging?.clipId === clip.id}
                   />
                 ))}
@@ -475,8 +635,36 @@ export default function TimelineTab({ projectId }) {
               </div>
             ))}
           </div>
+
+          {/* Sticky "+" column for adding video/audio clips */}
+          <div className={styles.rightCol}>
+            <div className={styles.rulerLabel} />
+            {LANE_KEYS.map(lane => (
+              <div key={lane} className={styles.laneRightCell}>
+                {MEDIA_LANES.includes(lane) && (
+                  <button
+                    className={styles.addClipBtn}
+                    onClick={() => openMediaPicker(lane)}
+                    aria-label={`Add ${LANE_LABELS[lane]} clip`}
+                    title={`Add ${LANE_LABELS[lane]} clip`}
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Media picker popup */}
+      {mediaPicker && (
+        <MediaPickerPopup
+          picker={mediaPicker}
+          onSelect={handleSelectMediaFile}
+          onClose={() => setMediaPicker(null)}
+        />
+      )}
 
       {/* Note popup */}
       {notePopup && (
@@ -495,7 +683,7 @@ export default function TimelineTab({ projectId }) {
 
 // ── ClipBlock ───────────────────────────────────────────────────────────────
 
-function ClipBlock({ clip, onPointerDown, onEdgePointerDown, onDelete, onNoteClick, isDragging }) {
+function ClipBlock({ clip, onPointerDown, onEdgePointerDown, onDelete, onNoteClick, onToggleMute, isDragging }) {
   const isNote = clip.lane === 'notes'
   const left = clip.startTime * PIXELS_PER_SECOND
   const width = Math.max(4, clip.duration * PIXELS_PER_SECOND)
@@ -530,6 +718,19 @@ function ClipBlock({ clip, onPointerDown, onEdgePointerDown, onDelete, onNoteCli
         className={`${styles.resizeHandle} ${styles.resizeHandleRight}`}
         onPointerDown={e => onEdgePointerDown(e, clip, 'right')}
       />
+
+      {/* Mute toggle (video/audio clips only) */}
+      {!isNote && (
+        <button
+          className={styles.clipMuteBtn}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onToggleMute(clip.id) }}
+          aria-label={clip.muted ? 'Unmute clip' : 'Mute clip'}
+          title={clip.muted ? 'Unmute' : 'Mute'}
+        >
+          {clip.muted ? '🔇' : '🔊'}
+        </button>
+      )}
 
       {/* Delete button */}
       <button
@@ -575,6 +776,43 @@ function NotePopup({ clip, anchorX, anchorY, onSave, onClose, inputRef }) {
           <button className="btn-primary" onClick={() => onSave(text)}>Save</button>
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── MediaPickerPopup ────────────────────────────────────────────────────────
+
+function MediaPickerPopup({ picker, onSelect, onClose }) {
+  const { lane, status, files, error } = picker
+  const label = LANE_LABELS[lane]
+
+  return (
+    <div className={styles.notePopupOverlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className={styles.mediaPickerModal}>
+        <div className={styles.mediaPickerHeader}>
+          <span>Add {label} clip</span>
+          <button className={styles.closePlayer} onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        {status === 'loading' && <p className={styles.hint}>Loading…</p>}
+        {status === 'error' && <p className={styles.statusMsg}>{error}</p>}
+
+        {status === 'ready' && files.length === 0 && (
+          <p className={styles.hint}>No {label.toLowerCase()} files found in that folder.</p>
+        )}
+
+        {status === 'ready' && files.length > 0 && (
+          <ul className={styles.mediaPickerList} role="list">
+            {files.map(entry => (
+              <li key={entry.name}>
+                <button className={styles.mediaPickerItem} onClick={() => onSelect(entry)}>
+                  {entry.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )

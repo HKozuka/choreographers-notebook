@@ -70,6 +70,13 @@
   text-align: right;
 }
 
+.statusMsg {
+  font-size: 0.82rem;
+  color: var(--color-accent-secondary);
+  font-family: var(--font-body);
+  margin: 0;
+}
+
 /* ── Video preview ── */
 .previewSection {
   position: relative;
@@ -240,6 +247,57 @@
   cursor: crosshair;
 }
 
+.lane[data-lane='video'],
+.lane[data-lane='audio'] {
+  cursor: copy;
+}
+
+/* ── Right "+" column ── */
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 48px;
+  background: var(--color-surface);
+  border-left: var(--border);
+  z-index: 4;
+  position: sticky;
+  right: 0;
+}
+
+.laneRightCell {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: var(--border);
+}
+
+.laneRightCell:last-child {
+  border-bottom: none;
+}
+
+.addClipBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent-primary);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.12s ease;
+}
+
+.addClipBtn:hover {
+  background: var(--color-accent-secondary);
+}
+
 /* ── Clip ── */
 .clip {
   position: absolute;
@@ -299,6 +357,7 @@
 .clipMedia .clipLabel {
   color: rgba(255,255,255,0.92);
   pointer-events: none;
+  padding-left: 28px;
 }
 
 .clipNote .clipLabel {
@@ -356,6 +415,27 @@
   background: rgba(45, 74, 62, 0.12);
 }
 
+/* ── Mute button on media clips ── */
+.clipMuteBtn {
+  position: absolute;
+  top: 1px;
+  left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  background: rgba(0,0,0,0.18);
+  border: none;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 5;
+  flex-shrink: 0;
+  color: #fff;
+}
+
 /* ── Note popup ── */
 .notePopupOverlay {
   position: fixed;
@@ -401,4 +481,79 @@
   display: flex;
   gap: var(--space-sm);
   justify-content: flex-end;
+}
+
+/* ── Media picker modal ── */
+.mediaPickerModal {
+  position: fixed;
+  z-index: 101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-background);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: var(--space-md);
+  width: 340px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.mediaPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.closePlayer {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closePlayer:hover {
+  color: var(--color-text-primary);
+}
+
+.mediaPickerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mediaPickerItem {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-sm);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mediaPickerItem:hover {
+  background: var(--color-surface);
 }
