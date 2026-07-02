@@ -11,11 +11,13 @@ function getExt(name) {
 }
 
 /**
- * Verify (and if needed request) readwrite permission on a directory handle.
+ * Verify (and if needed request) permission on a directory handle.
+ * Defaults to 'read' since listing/opening files only needs read access;
+ * pass mode: 'readwrite' before actually writing a new file.
  * Returns true if permission is granted, false otherwise.
  */
-async function verifyPermission(handle) {
-  const opts = { mode: 'readwrite' }
+async function verifyPermission(handle, mode = 'read') {
+  const opts = { mode }
   if ((await handle.queryPermission(opts)) === 'granted') return true
   if ((await handle.requestPermission(opts)) === 'granted') return true
   return false
@@ -103,6 +105,11 @@ export default function VideoLogTab({ projectId }) {
   const handleCameraSave = useCallback(async (blob, filename) => {
     if (!dirHandle) return
     console.log('[VideoLogTab] Writing blob to folder, size:', blob.size, 'filename:', filename)
+    const ok = await verifyPermission(dirHandle, 'readwrite')
+    if (!ok) {
+      setStatusMsg('Write permission required to save — please click "Grant folder access" again.')
+      return
+    }
     try {
       const fileHandle = await dirHandle.getFileHandle(filename, { create: true })
       const writable = await fileHandle.createWritable()

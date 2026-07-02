@@ -9,8 +9,8 @@ function getExt(name) {
   return i >= 0 ? name.slice(i).toLowerCase() : ''
 }
 
-async function verifyPermission(handle) {
-  const opts = { mode: 'readwrite' }
+async function verifyPermission(handle, mode = 'read') {
+  const opts = { mode }
   if ((await handle.queryPermission(opts)) === 'granted') return true
   if ((await handle.requestPermission(opts)) === 'granted') return true
   return false
@@ -175,6 +175,11 @@ export default function MusicTab({ projectId }) {
 
   const handleSaveRecording = useCallback(async () => {
     if (!recordedBlob || !dirHandle) return
+    const ok = await verifyPermission(dirHandle, 'readwrite')
+    if (!ok) {
+      setStatusMsg('Write permission required to save — please click "Grant folder access" again.')
+      return
+    }
     const filename = `audio-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`
     try {
       const fileHandle = await dirHandle.getFileHandle(filename, { create: true })
