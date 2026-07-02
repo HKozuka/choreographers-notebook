@@ -1,5 +1,5 @@
 // ─── IBM watsonx.ai API service ───
-// Model: ibm/granite-3-2b-instruct (fixed — quality carried by system prompts)
+// Model: ibm/granite-4-h-small (fixed — quality carried by system prompts)
 // Region: us-south
 //
 // All requests are routed through the Vite dev-server proxy (/api/iam and
@@ -68,7 +68,7 @@ export async function generateText(systemPrompt, userPrompt, contextBlock = null
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      model_id: 'ibm/granite-3-2b-instruct',
+      model_id: 'ibm/granite-4-h-small',
       project_id: projectId,
       messages: [
         { role: 'system', content: systemPrompt },
