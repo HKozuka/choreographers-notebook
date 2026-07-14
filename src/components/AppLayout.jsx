@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { loadActiveProjects } from '../utils/projects'
+import { loadActiveProjects, loadProjectImages } from '../utils/projects'
 import styles from './AppLayout.module.css'
 
 export default function AppLayout() {
@@ -44,6 +44,7 @@ export default function AppLayout() {
   }
 
   const projects = menuOpen ? loadActiveProjects() : []
+  const images = menuOpen ? loadProjectImages() : {}
 
   return (
     <div className={styles.shell}>
@@ -56,13 +57,6 @@ export default function AppLayout() {
         </button>
 
         <nav className={styles.tabs} aria-label="Primary">
-          <NavLink
-            to="/seeds"
-            className={({ isActive }) => `${styles.tab} ${isActive ? styles.tabActive : ''}`}
-          >
-            Seeds of Movement
-          </NavLink>
-
           <div
             className={styles.projectsTabWrap}
             onMouseEnter={openMenu}
@@ -91,24 +85,42 @@ export default function AppLayout() {
                   <p className={styles.projectsMenuEmpty}>No projects yet</p>
                 ) : (
                   <ul className={styles.projectsMenuList}>
-                    {projects.map(project => (
-                      <li key={project.id}>
-                        <button
-                          className={styles.projectsMenuItem}
-                          onClick={() => {
-                            setMenuOpen(false)
-                            navigate(`/project/${project.id}`)
-                          }}
-                        >
-                          {project.name}
-                        </button>
-                      </li>
-                    ))}
+                    {projects.map(project => {
+                      const image = images[project.id] || null
+                      const monogram = project.name.charAt(0).toUpperCase()
+                      return (
+                        <li key={project.id}>
+                          <button
+                            className={styles.projectsMenuItem}
+                            onClick={() => {
+                              setMenuOpen(false)
+                              navigate(`/project/${project.id}`)
+                            }}
+                          >
+                            <span className={styles.projectsMenuThumb}>
+                              {image ? (
+                                <img src={image} alt="" className={styles.projectsMenuThumbImg} />
+                              ) : (
+                                <span className={styles.projectsMenuThumbMonogram}>{monogram}</span>
+                              )}
+                            </span>
+                            <span className={styles.projectsMenuName}>{project.name}</span>
+                          </button>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
             )}
           </div>
+
+          <NavLink
+            to="/seeds"
+            className={({ isActive }) => `${styles.tab} ${isActive ? styles.tabActive : ''}`}
+          >
+            Seeds of Movement
+          </NavLink>
         </nav>
       </header>
 

@@ -5,6 +5,7 @@
  */
 
 const STORAGE_KEY = 'choreographer_projects'
+const IMAGE_STORE_KEY = 'choreographer_project_images'
 
 export function loadProjects() {
   try {
@@ -55,4 +56,13 @@ export function deleteProjectPermanently(id) {
 
 export function getProjectName(id) {
   return loadProjects().find(p => p.id === id)?.name || 'Untitled Project'
+}
+
+/** Map of projectId -> cover image data URL, keyed as uploaded via ProjectsPage. */
+export function loadProjectImages() {
+  try {
+    return JSON.parse(localStorage.getItem(IMAGE_STORE_KEY)) || {}
+  } catch {
+    return {}
+  }
 }

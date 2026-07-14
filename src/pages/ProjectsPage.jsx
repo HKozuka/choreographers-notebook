@@ -4,6 +4,7 @@ import {
   loadActiveProjects,
   saveProjects,
   loadProjects,
+  loadProjectImages,
   trashProject,
 } from '../utils/projects'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -16,22 +17,14 @@ function generateId() {
   return Math.random().toString(36).slice(2, 11)
 }
 
-function loadImages() {
-  try {
-    return JSON.parse(localStorage.getItem(IMAGE_STORE_KEY)) || {}
-  } catch {
-    return {}
-  }
-}
-
 function saveImage(projectId, base64) {
-  const images = loadImages()
+  const images = loadProjectImages()
   images[projectId] = base64
   localStorage.setItem(IMAGE_STORE_KEY, JSON.stringify(images))
 }
 
 function removeImage(projectId) {
-  const images = loadImages()
+  const images = loadProjectImages()
   delete images[projectId]
   localStorage.setItem(IMAGE_STORE_KEY, JSON.stringify(images))
 }
@@ -39,7 +32,7 @@ function removeImage(projectId) {
 export default function ProjectsPage() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState(loadActiveProjects)
-  const [images, setImages] = useState(loadImages)
+  const [images, setImages] = useState(loadProjectImages)
   const [newName, setNewName] = useState('')
   const [showTrash, setShowTrash] = useState(false)
   const [confirmTrash, setConfirmTrash] = useState(null)
@@ -68,7 +61,7 @@ export default function ProjectsPage() {
     removeImage(confirmTrash.id)
     trashProject(confirmTrash.id)
     setConfirmTrash(null)
-    setImages(loadImages())
+    setImages(loadProjectImages())
     refreshProjects()
   }
 
@@ -79,7 +72,7 @@ export default function ProjectsPage() {
     const reader = new FileReader()
     reader.onload = ev => {
       saveImage(projectId, ev.target.result)
-      setImages(loadImages())
+      setImages(loadProjectImages())
     }
     reader.readAsDataURL(file)
   }
