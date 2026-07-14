@@ -7,6 +7,7 @@ import CameraModal from '../components/CameraModal'
 import styles from './SeedsPage.module.css'
 
 const NOTES_KEY_PREFIX = 'project_notes_'
+const RECORD_HINT_KEY = 'choreographer_seen_record_hint'
 
 /** Read all text pages from a project's notes, stripping HTML tags. */
 function getProjectNotesText(projectId) {
@@ -48,6 +49,29 @@ export default function SeedsPage() {
   // Project context state
   const [contextOpen, setContextOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState(null)
+
+  // First-visit onboarding callout pointing at the Record button
+  const [showRecordHint, setShowRecordHint] = useState(
+    () => localStorage.getItem(RECORD_HINT_KEY) !== 'true'
+  )
+  const recordHintRef = useRef(null)
+
+  function dismissRecordHint() {
+    localStorage.setItem(RECORD_HINT_KEY, 'true')
+    setShowRecordHint(false)
+  }
+
+  // Dismiss on any click outside the callout
+  useEffect(() => {
+    if (!showRecordHint) return
+    function handleClickOutside(e) {
+      if (recordHintRef.current && !recordHintRef.current.contains(e.target)) {
+        dismissRecordHint()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showRecordHint])
 
   const projects = useMemo(() => loadActiveProjects(), [])
 
@@ -122,14 +146,54 @@ export default function SeedsPage() {
       <header className={styles.header}>
         <div className={styles.headerRow}>
           <h1 className={styles.title}>Seeds of Movement</h1>
-          <button
-            className="btn-secondary"
-            onClick={() => setCameraOpen(true)}
-            aria-label="Record a movement clip"
-            title="Record a clip"
-          >
-            ⏺ Record
-          </button>
+          <div className={styles.recordBtnWrap}>
+            <button
+              className="btn-secondary"
+              onClick={() => setCameraOpen(true)}
+              aria-label="Record a movement clip"
+              title="Record a clip"
+            >
+              ⏺ Record
+            </button>
+
+            {showRecordHint && (
+              <div className={styles.recordHint} ref={recordHintRef} role="note">
+                <svg
+                  className={styles.recordHintArrow}
+                  width="34"
+                  height="40"
+                  viewBox="0 0 34 40"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 38 C4 18, 16 8, 30 4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M21 3 L30 4 L27 12"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <button
+                  className={styles.recordHintClose}
+                  onClick={dismissRecordHint}
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+                <p className={styles.recordHintText}>
+                  Feeling something? Record it here to save the movement to your project.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
         <p className={styles.subtitle}>
           An AI ideation workspace for movement scores, cues, and vocabulary expansion.

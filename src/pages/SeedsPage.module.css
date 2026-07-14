@@ -37,6 +37,73 @@
   max-width: 520px;
 }
 
+/* ── Record button onboarding callout ── */
+.recordBtnWrap {
+  position: relative;
+}
+
+.recordHint {
+  position: absolute;
+  top: calc(100% + 34px);
+  right: 0;
+  width: 230px;
+  max-width: calc(100vw - 2 * var(--space-lg));
+  background-color: var(--color-background);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  padding-right: 1.6rem;
+  z-index: 15;
+}
+
+.recordHintArrow {
+  position: absolute;
+  top: -32px;
+  right: 22px;
+  color: var(--color-accent-primary);
+  pointer-events: none;
+}
+
+.recordHintText {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+.recordHintClose {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.recordHintClose:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 640px) {
+  /* The Record button wraps onto its own row and lands at the flex
+     container's start (left) on narrow screens, rather than staying
+     right-aligned like on desktop — anchor from the left to match. */
+  .recordHint {
+    right: auto;
+    left: 0;
+    width: min(220px, calc(100vw - 2 * var(--space-lg)));
+  }
+
+  .recordHintArrow {
+    right: auto;
+    left: 20px;
+  }
+}
+
 /* ── Mode cards ── */
 .modeGrid {
   display: grid;
