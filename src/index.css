@@ -98,3 +98,33 @@ textarea:focus {
   margin: 0 auto;
   padding: var(--space-xl) var(--space-lg);
 }
+
+/* ─── View transition: landing → home ───
+   Only fires for navigations explicitly opted in via
+   navigate(to, { viewTransition: true }) — other route changes
+   are unaffected. Replaces the browser's default crossfade with a
+   gentle zoom-through so the two screens read as one continuous shift. */
+::view-transition-old(root) {
+  animation: view-transition-out 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: view-transition-in 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes view-transition-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.04); }
+}
+
+@keyframes view-transition-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
