@@ -42,10 +42,6 @@ export default function HomePage() {
 
   return (
     <div className={styles.home}>
-      <button className={styles.projectsToggle} onClick={() => navigate('/projects')}>
-        Projects
-      </button>
-
       <div className={styles.inner}>
         <p className={styles.tagline}>Where inspiration becomes movement</p>
 
