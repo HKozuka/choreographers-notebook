@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateText } from '../services/watsonx'
 import {
@@ -55,14 +55,19 @@ function buildContextBlock(project) {
   return `[Project Context: "${project.name}"]\nNotes:\n${notes || '(no text notes)'}`
 }
 
+function generateId() {
+  return Math.random().toString(36).slice(2, 10)
+}
+
 export default function SeedsPage() {
   const navigate = useNavigate()
   const [activeMode, setActiveMode] = useState('story')
   const [userInput, setUserInput] = useState('')
-  const [response, setResponse] = useState('')
+  // Chat log kept per mode, so switching tabs doesn't lose a conversation.
+  const [messagesByMode, setMessagesByMode] = useState({ story: [], abstract: [], vocabulary: [] })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [cameraOpen, setCameraOpen] = useState(false)
+  const chatLogRef = useRef(null)
 
   // Project context state
   const [contextOpen, setContextOpen] = useState(false)
@@ -72,6 +77,7 @@ export default function SeedsPage() {
 
   const currentMode = MODES.find(m => m.key === activeMode)
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null
+  const messages = messagesByMode[activeMode]
 
   // Check if selected project has any text notes
   const selectedNotesText = selectedProject ? getProjectNotesText(selectedProject.id) : ''
@@ -81,21 +87,31 @@ export default function SeedsPage() {
     setSelectedProjectId(prev => (prev === projectId ? null : projectId))
   }
 
+  function appendMessage(mode, message) {
+    setMessagesByMode(prev => ({ ...prev, [mode]: [...prev[mode], message] }))
+  }
+
+  // Auto-scroll to the newest message whenever the active log grows
+  useEffect(() => {
+    chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, loading])
+
   async function handleSubmit(e) {
     e.preventDefault()
     const input = userInput.trim()
     if (!input) return
 
+    const mode = activeMode
+    appendMessage(mode, { id: generateId(), role: 'user', text: input })
+    setUserInput('')
     setLoading(true)
-    setError('')
-    setResponse('')
 
     try {
       const contextBlock = selectedProject ? buildContextBlock(selectedProject) : null
       const result = await generateText(currentMode.prompt, input, contextBlock)
-      setResponse(result)
+      appendMessage(mode, { id: generateId(), role: 'assistant', text: result })
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      appendMessage(mode, { id: generateId(), role: 'assistant', text: err.message || 'Something went wrong. Please try again.', isError: true })
     } finally {
       setLoading(false)
     }
@@ -111,7 +127,7 @@ export default function SeedsPage() {
       )}
 
       <nav className={styles.nav}>
-        <button className="btn-secondary" onClick={() => navigate('/')}>
+        <button className="btn-secondary" onClick={() => navigate('/home')}>
           ← Notebook
         </button>
       </nav>
@@ -141,11 +157,7 @@ export default function SeedsPage() {
             role="tab"
             aria-selected={activeMode === mode.key}
             className={`${styles.modeTab} ${activeMode === mode.key ? styles.modeTabActive : ''}`}
-            onClick={() => {
-              setActiveMode(mode.key)
-              setResponse('')
-              setError('')
-            }}
+            onClick={() => setActiveMode(mode.key)}
           >
             {mode.label}
           </button>
@@ -220,6 +232,31 @@ export default function SeedsPage() {
         </div>
       )}
 
+      {/* Chat log */}
+      <div className={styles.chatLog} ref={chatLogRef}>
+        {messages.length === 0 && !loading && (
+          <p className={styles.chatEmpty}>Your conversation in {currentMode.label} will appear here.</p>
+        )}
+        {messages.map(msg => (
+          <div
+            key={msg.id}
+            className={`${styles.chatMessage} ${msg.role === 'user' ? styles.chatMessageUser : styles.chatMessageAssistant} ${msg.isError ? styles.chatMessageError : ''}`}
+          >
+            <div className={styles.chatMessageLabel}>
+              {msg.role === 'user' ? 'You' : msg.isError ? 'Error' : currentMode.label}
+            </div>
+            <div className={styles.chatMessageText}>{msg.text}</div>
+          </div>
+        ))}
+        {loading && (
+          <div className={styles.loading} aria-live="polite">
+            <span className={styles.loadingDot} />
+            <span className={styles.loadingDot} />
+            <span className={styles.loadingDot} />
+          </div>
+        )}
+      </div>
+
       {/* Prompt form */}
       <form className={styles.form} onSubmit={handleSubmit}>
         <textarea
@@ -240,30 +277,6 @@ export default function SeedsPage() {
           </button>
         </div>
       </form>
-
-      {/* Error */}
-      {error && (
-        <div className={styles.error} role="alert">
-          {error}
-        </div>
-      )}
-
-      {/* Loading state */}
-      {loading && (
-        <div className={styles.loading} aria-live="polite">
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-        </div>
-      )}
-
-      {/* Response */}
-      {response && !loading && (
-        <div className={styles.response}>
-          <div className={styles.responseLabel}>Response</div>
-          <div className={styles.responseText}>{response}</div>
-        </div>
-      )}
     </div>
   )
 }

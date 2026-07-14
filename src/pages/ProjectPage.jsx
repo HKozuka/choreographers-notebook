@@ -99,7 +99,7 @@ export default function ProjectPage() {
 
   function handleDeleteConfirm() {
     trashProject(id)
-    navigate('/')
+    navigate('/projects')
   }
 
   // ── Enter adjust mode when clicking the banner image (not the title)
@@ -198,7 +198,7 @@ export default function ProjectPage() {
   return (
     <div className="page">
       <nav className={styles.nav}>
-        <button className="btn-secondary" onClick={() => navigate('/')}>
+        <button className="btn-secondary" onClick={() => navigate('/home')}>
           ← Notebook
         </button>
         <button

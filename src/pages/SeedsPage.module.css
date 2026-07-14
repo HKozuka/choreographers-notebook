@@ -131,36 +131,66 @@
   40% { opacity: 1; transform: scale(1); }
 }
 
-/* Error */
-.error {
-  background-color: var(--color-surface);
-  border: 1px solid #b94a48;
-  border-radius: var(--radius);
+/* ── Chat log ── */
+.chatLog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-height: 55vh;
+  overflow-y: auto;
   padding: var(--space-md);
-  color: #b94a48;
-  font-size: 0.9rem;
-  margin-bottom: var(--space-lg);
-}
-
-/* Response */
-.response {
   border: var(--border);
   border-radius: var(--radius);
-  padding: var(--space-xl);
   background-color: var(--color-surface);
+  margin-bottom: var(--space-md);
 }
 
-.responseLabel {
+.chatEmpty {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-family: var(--font-display);
+  text-align: center;
+  padding: var(--space-lg) 0;
+}
+
+.chatMessage {
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  max-width: 90%;
+}
+
+.chatMessageUser {
+  align-self: flex-end;
+  background-color: var(--color-background);
+  border: var(--border);
+}
+
+.chatMessageAssistant {
+  align-self: flex-start;
+  background-color: var(--color-background);
+  border-left: 3px solid var(--color-accent-primary);
+}
+
+.chatMessageError {
+  border-left-color: #b94a48;
+}
+
+.chatMessageLabel {
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-sm);
 }
 
-.responseText {
+.chatMessageError .chatMessageLabel {
+  color: #b94a48;
+}
+
+.chatMessageText {
   font-family: var(--font-display);
   font-size: 1rem;
   line-height: 1.8;
