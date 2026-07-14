@@ -1,35 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateText } from '../services/watsonx'
-import {
-  STORY_MODE_PROMPT,
-  ABSTRACT_MODE_PROMPT,
-  VOCABULARY_EXPANDER_PROMPT,
-} from '../data/systemPrompts'
+import { MODES } from '../data/seedsModes'
 import { loadActiveProjects } from '../utils/projects'
 import CameraModal from '../components/CameraModal'
 import styles from './SeedsPage.module.css'
-
-const MODES = [
-  {
-    key: 'story',
-    label: 'Story Mode',
-    description: 'Narrative scores, event scores, and poetic directives for improvisation.',
-    prompt: STORY_MODE_PROMPT,
-  },
-  {
-    key: 'abstract',
-    label: 'Abstract Mode',
-    description: 'Precise kinesthetic cues and constraints grounded in LMA, Forsythe, and Viewpoints.',
-    prompt: ABSTRACT_MODE_PROMPT,
-  },
-  {
-    key: 'vocabulary',
-    label: 'Movement Vocabulary Expander',
-    description: 'Targeted exercises to move beyond habitual patterns, drawn from somatic theory.',
-    prompt: VOCABULARY_EXPANDER_PROMPT,
-  },
-]
 
 const NOTES_KEY_PREFIX = 'project_notes_'
 
@@ -68,6 +43,7 @@ export default function SeedsPage() {
   const [loading, setLoading] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const chatLogRef = useRef(null)
+  const chatSectionRef = useRef(null)
 
   // Project context state
   const [contextOpen, setContextOpen] = useState(false)
@@ -96,29 +72,40 @@ export default function SeedsPage() {
     chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    const input = userInput.trim()
-    if (!input) return
-
-    const mode = activeMode
-    appendMessage(mode, { id: generateId(), role: 'user', text: input })
-    setUserInput('')
+  /** Shared by the free-form textarea submit and the per-mode example chips. */
+  async function runPrompt(modeKey, input) {
+    if (loading) return
+    const mode = MODES.find(m => m.key === modeKey)
+    setActiveMode(modeKey)
+    appendMessage(modeKey, { id: generateId(), role: 'user', text: input })
     setLoading(true)
 
     try {
       const contextBlock = selectedProject ? buildContextBlock(selectedProject) : null
-      const result = await generateText(currentMode.prompt, input, contextBlock)
-      appendMessage(mode, { id: generateId(), role: 'assistant', text: result })
+      const result = await generateText(mode.prompt, input, contextBlock)
+      appendMessage(modeKey, { id: generateId(), role: 'assistant', text: result })
     } catch (err) {
-      appendMessage(mode, { id: generateId(), role: 'assistant', text: err.message || 'Something went wrong. Please try again.', isError: true })
+      appendMessage(modeKey, { id: generateId(), role: 'assistant', text: err.message || 'Something went wrong. Please try again.', isError: true })
     } finally {
       setLoading(false)
     }
   }
 
+  function handleSubmit(e) {
+    e.preventDefault()
+    const input = userInput.trim()
+    if (!input) return
+    setUserInput('')
+    runPrompt(activeMode, input)
+  }
+
+  function handleExampleClick(modeKey, example) {
+    runPrompt(modeKey, example)
+    chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div className="page">
+    <div className={`page ${styles.pageWide}`}>
       {cameraOpen && (
         <CameraModal
           onClose={() => setCameraOpen(false)}
@@ -149,134 +136,159 @@ export default function SeedsPage() {
         </p>
       </header>
 
-      {/* Mode selector */}
-      <div className={styles.modeSelector} role="tablist" aria-label="Select a mode">
+      {/* Mode cards — explain each mode and let users try it before committing */}
+      <div className={styles.modeGrid}>
         {MODES.map(mode => (
-          <button
-            key={mode.key}
-            role="tab"
-            aria-selected={activeMode === mode.key}
-            className={`${styles.modeTab} ${activeMode === mode.key ? styles.modeTabActive : ''}`}
-            onClick={() => setActiveMode(mode.key)}
-          >
-            {mode.label}
-          </button>
-        ))}
-      </div>
-
-      <p className={styles.modeDescription}>{currentMode.description}</p>
-
-      {/* Project context selector */}
-      <div className={styles.contextSection}>
-        <button
-          className={styles.contextToggleBtn}
-          onClick={() => setContextOpen(o => !o)}
-          aria-expanded={contextOpen}
-        >
-          <span className={styles.contextToggleIcon}>{contextOpen ? '▾' : '▸'}</span>
-          Add Project Context
-          {selectedProject && (
-            <span className={styles.contextActivePill}>{selectedProject.name}</span>
-          )}
-        </button>
-
-        {contextOpen && (
-          <div className={styles.contextPanel}>
-            {projects.length === 0 ? (
-              <p className={styles.contextEmpty}>No projects yet.</p>
-            ) : (
-              <ul className={styles.contextList}>
-                {projects.map(project => {
-                  const isSelected = selectedProjectId === project.id
-                  const notesText = getProjectNotesText(project.id)
-                  const empty = !notesText
-                  return (
-                    <li key={project.id} className={styles.contextItem}>
-                      <label className={styles.contextLabel}>
-                        <input
-                          type="radio"
-                          name="project-context"
-                          className={styles.contextRadio}
-                          checked={isSelected}
-                          onChange={() => handleProjectToggle(project.id)}
-                        />
-                        <span className={styles.contextProjectName}>{project.name}</span>
-                        {isSelected && empty && (
-                          <span className={styles.contextNoNotes}>No text notes in this project</span>
-                        )}
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-            {selectedProjectId && (
-              <button
-                className={styles.contextClearBtn}
-                onClick={() => setSelectedProjectId(null)}
-              >
-                Clear context
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Active context label near the input */}
-      {selectedProject && (
-        <div className={styles.contextActiveLabel}>
-          {hasNoNotes
-            ? <>Context: <strong>{selectedProject.name}</strong> — <em>no text notes to use as context</em></>
-            : <>Context active: <strong>{selectedProject.name}</strong></>
-          }
-        </div>
-      )}
-
-      {/* Chat log */}
-      <div className={styles.chatLog} ref={chatLogRef}>
-        {messages.length === 0 && !loading && (
-          <p className={styles.chatEmpty}>Your conversation in {currentMode.label} will appear here.</p>
-        )}
-        {messages.map(msg => (
           <div
-            key={msg.id}
-            className={`${styles.chatMessage} ${msg.role === 'user' ? styles.chatMessageUser : styles.chatMessageAssistant} ${msg.isError ? styles.chatMessageError : ''}`}
+            key={mode.key}
+            className={`${styles.modeCard} ${activeMode === mode.key ? styles.modeCardActive : ''}`}
           >
-            <div className={styles.chatMessageLabel}>
-              {msg.role === 'user' ? 'You' : msg.isError ? 'Error' : currentMode.label}
+            <div className={styles.modeCardHeader}>
+              <span className={styles.modeCardName}>{mode.label}</span>
+              {activeMode === mode.key && (
+                <span className={styles.modeCardActiveBadge}>Active</span>
+              )}
             </div>
-            <div className={styles.chatMessageText}>{msg.text}</div>
+            <p className={styles.modeCardBlurb}>{mode.blurb}</p>
+            <p className={styles.modeCardTheory}>{mode.theory}</p>
+
+            <span className={styles.examplesLabel}>Try an example</span>
+            <div className={styles.chips}>
+              {mode.examples.map(example => (
+                <button
+                  key={example}
+                  className={styles.chip}
+                  onClick={() => handleExampleClick(mode.key, example)}
+                  disabled={loading}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+
+            <button
+              className={styles.useModeBtn}
+              onClick={() => setActiveMode(mode.key)}
+            >
+              Use this mode ↓
+            </button>
           </div>
         ))}
-        {loading && (
-          <div className={styles.loading} aria-live="polite">
-            <span className={styles.loadingDot} />
-            <span className={styles.loadingDot} />
-            <span className={styles.loadingDot} />
-          </div>
-        )}
       </div>
 
-      {/* Prompt form */}
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <textarea
-          className={styles.textarea}
-          rows={4}
-          placeholder={getPlaceholder(activeMode)}
-          value={userInput}
-          onChange={e => setUserInput(e.target.value)}
-          disabled={loading}
-        />
-        <div className={styles.formFooter}>
+      <div ref={chatSectionRef}>
+        {/* Project context selector */}
+        <div className={styles.contextSection}>
           <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading || !userInput.trim()}
+            className={styles.contextToggleBtn}
+            onClick={() => setContextOpen(o => !o)}
+            aria-expanded={contextOpen}
           >
-            {loading ? 'Generating…' : 'Generate'}
+            <span className={styles.contextToggleIcon}>{contextOpen ? '▾' : '▸'}</span>
+            Add Project Context
+            {selectedProject && (
+              <span className={styles.contextActivePill}>{selectedProject.name}</span>
+            )}
           </button>
+
+          {contextOpen && (
+            <div className={styles.contextPanel}>
+              {projects.length === 0 ? (
+                <p className={styles.contextEmpty}>No projects yet.</p>
+              ) : (
+                <ul className={styles.contextList}>
+                  {projects.map(project => {
+                    const isSelected = selectedProjectId === project.id
+                    const notesText = getProjectNotesText(project.id)
+                    const empty = !notesText
+                    return (
+                      <li key={project.id} className={styles.contextItem}>
+                        <label className={styles.contextLabel}>
+                          <input
+                            type="radio"
+                            name="project-context"
+                            className={styles.contextRadio}
+                            checked={isSelected}
+                            onChange={() => handleProjectToggle(project.id)}
+                          />
+                          <span className={styles.contextProjectName}>{project.name}</span>
+                          {isSelected && empty && (
+                            <span className={styles.contextNoNotes}>No text notes in this project</span>
+                          )}
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              {selectedProjectId && (
+                <button
+                  className={styles.contextClearBtn}
+                  onClick={() => setSelectedProjectId(null)}
+                >
+                  Clear context
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      </form>
+
+        {/* Active context label near the input */}
+        {selectedProject && (
+          <div className={styles.contextActiveLabel}>
+            {hasNoNotes
+              ? <>Context: <strong>{selectedProject.name}</strong> — <em>no text notes to use as context</em></>
+              : <>Context active: <strong>{selectedProject.name}</strong></>
+            }
+          </div>
+        )}
+
+        {/* Chat log */}
+        <div className={styles.chatLog} ref={chatLogRef}>
+          {messages.length === 0 && !loading && (
+            <p className={styles.chatEmpty}>Your conversation in {currentMode.label} will appear here.</p>
+          )}
+          {messages.map(msg => (
+            <div
+              key={msg.id}
+              className={`${styles.chatMessage} ${msg.role === 'user' ? styles.chatMessageUser : styles.chatMessageAssistant} ${msg.isError ? styles.chatMessageError : ''}`}
+            >
+              <div className={styles.chatMessageLabel}>
+                {msg.role === 'user' ? 'You' : msg.isError ? 'Error' : currentMode.label}
+              </div>
+              <div className={styles.chatMessageText}>{msg.text}</div>
+            </div>
+          ))}
+          {loading && (
+            <div className={styles.loading} aria-live="polite">
+              <span className={styles.loadingDot} />
+              <span className={styles.loadingDot} />
+              <span className={styles.loadingDot} />
+            </div>
+          )}
+        </div>
+
+        {/* Prompt form */}
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <textarea
+            className={styles.textarea}
+            rows={4}
+            placeholder={getPlaceholder(activeMode)}
+            value={userInput}
+            onChange={e => setUserInput(e.target.value)}
+            disabled={loading}
+          />
+          <div className={styles.formFooter}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || !userInput.trim()}
+            >
+              {loading ? 'Generating…' : 'Generate'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

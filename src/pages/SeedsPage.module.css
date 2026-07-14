@@ -1,3 +1,9 @@
+/* Seeds needs more breathing room than the standard .page width for the
+   three-across mode card grid. */
+:global(.page).pageWide {
+  max-width: 980px;
+}
+
 .nav {
   margin-bottom: var(--space-xl);
 }
@@ -31,45 +37,125 @@
   max-width: 520px;
 }
 
-/* Mode selector tabs */
-.modeSelector {
+/* ── Mode cards ── */
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  align-items: start;
+}
+
+.modeCard {
   display: flex;
-  gap: 0;
-  border-bottom: var(--border);
-  margin-bottom: var(--space-md);
+  flex-direction: column;
+  gap: var(--space-sm);
+  background: var(--color-background);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.modeTab {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 0.6rem var(--space-md);
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+.modeCardActive {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-primary);
 }
 
-.modeTab:hover {
+.modeCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.modeCardName {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 
-.modeTabActive {
-  color: var(--color-accent-primary);
-  border-bottom-color: var(--color-accent-primary);
+.modeCardActiveBadge {
+  font-size: 0.68rem;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-primary);
+  flex-shrink: 0;
 }
 
-.modeDescription {
-  font-size: 0.88rem;
+.modeCardBlurb {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-text-primary);
+}
+
+.modeCardTheory {
+  font-size: 0.76rem;
+  line-height: 1.5;
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-lg);
   font-style: italic;
-  font-family: var(--font-display);
+  border-left: 2px solid var(--color-border);
+  padding-left: 0.6rem;
+}
+
+.examplesLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chip {
+  text-align: left;
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--color-accent-primary);
+}
+
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.useModeBtn {
+  align-self: flex-start;
+  margin-top: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-accent-primary);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Prompt form */
