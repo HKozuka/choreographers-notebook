@@ -7,7 +7,6 @@ import CameraModal from '../components/CameraModal'
 import styles from './SeedsPage.module.css'
 
 const NOTES_KEY_PREFIX = 'project_notes_'
-const RECORD_HINT_KEY = 'choreographer_seen_record_hint'
 
 /** Read all text pages from a project's notes, stripping HTML tags. */
 function getProjectNotesText(projectId) {
@@ -50,14 +49,12 @@ export default function SeedsPage() {
   const [contextOpen, setContextOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState(null)
 
-  // First-visit onboarding callout pointing at the Record button
-  const [showRecordHint, setShowRecordHint] = useState(
-    () => localStorage.getItem(RECORD_HINT_KEY) !== 'true'
-  )
+  // Onboarding callout pointing at the Record button. Reappears on every
+  // load/refresh by design — dismissal only holds for the current page view.
+  const [showRecordHint, setShowRecordHint] = useState(true)
   const recordHintRef = useRef(null)
 
   function dismissRecordHint() {
-    localStorage.setItem(RECORD_HINT_KEY, 'true')
     setShowRecordHint(false)
   }
 
@@ -160,20 +157,20 @@ export default function SeedsPage() {
               <div className={styles.recordHint} ref={recordHintRef} role="note">
                 <svg
                   className={styles.recordHintArrow}
-                  width="34"
+                  width="20"
                   height="40"
-                  viewBox="0 0 34 40"
+                  viewBox="0 0 20 40"
                   aria-hidden="true"
                 >
                   <path
-                    d="M4 38 C4 18, 16 8, 30 4"
+                    d="M10 38 L10 4"
                     stroke="currentColor"
                     strokeWidth="1.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
-                    d="M21 3 L30 4 L27 12"
+                    d="M4 12 L10 3 L16 12"
                     stroke="currentColor"
                     strokeWidth="1.5"
                     fill="none"

@@ -59,7 +59,7 @@
 .recordHintArrow {
   position: absolute;
   top: -32px;
-  right: 22px;
+  right: 38px;
   color: var(--color-accent-primary);
   pointer-events: none;
 }
@@ -100,7 +100,7 @@
 
   .recordHintArrow {
     right: auto;
-    left: 20px;
+    left: 38px;
   }
 }
 
