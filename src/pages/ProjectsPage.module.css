@@ -55,7 +55,23 @@
 .card {
   display: flex;
   flex-direction: column;
-  cursor: default;
+  cursor: grab;
+  border-radius: var(--radius);
+  transition: opacity 0.15s ease, outline-color 0.15s ease;
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.cardDragging {
+  opacity: 0.4;
+}
+
+.cardDragOver {
+  outline-color: var(--color-accent-primary);
 }
 
 /* Square image area */

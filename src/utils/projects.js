@@ -58,6 +58,15 @@ export function getProjectName(id) {
   return loadProjects().find(p => p.id === id)?.name || 'Untitled Project'
 }
 
+/** Reorder active (non-trashed) projects to match orderedIds; trashed projects keep their relative order at the end. */
+export function reorderActiveProjects(orderedIds) {
+  const all = loadProjects()
+  const byId = new Map(all.map(p => [p.id, p]))
+  const reorderedActive = orderedIds.map(id => byId.get(id)).filter(Boolean)
+  const trashed = all.filter(p => !!p.trashedAt)
+  saveProjects([...reorderedActive, ...trashed])
+}
+
 /** Map of projectId -> cover image data URL, keyed as uploaded via ProjectsPage. */
 export function loadProjectImages() {
   try {

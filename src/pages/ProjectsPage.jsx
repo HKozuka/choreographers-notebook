@@ -5,6 +5,7 @@ import {
   saveProjects,
   loadProjects,
   loadProjectImages,
+  reorderActiveProjects,
   trashProject,
 } from '../utils/projects'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -37,8 +38,46 @@ export default function ProjectsPage() {
   const [showTrash, setShowTrash] = useState(false)
   const [confirmTrash, setConfirmTrash] = useState(null)
 
+  // Drag-to-reorder state
+  const [draggedId, setDraggedId] = useState(null)
+  const [dragOverId, setDragOverId] = useState(null)
+
   function refreshProjects() {
     setProjects(loadActiveProjects())
+  }
+
+  function handleDragStart(e, projectId) {
+    setDraggedId(projectId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', projectId)
+  }
+
+  function handleDragOver(e, projectId) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (projectId !== draggedId) {
+      setDragOverId(projectId)
+    }
+  }
+
+  function handleDrop(e, targetId) {
+    e.preventDefault()
+    if (draggedId && draggedId !== targetId) {
+      const order = projects.map(p => p.id)
+      const fromIndex = order.indexOf(draggedId)
+      const toIndex = order.indexOf(targetId)
+      order.splice(fromIndex, 1)
+      order.splice(toIndex, 0, draggedId)
+      reorderActiveProjects(order)
+      refreshProjects()
+    }
+    setDraggedId(null)
+    setDragOverId(null)
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null)
+    setDragOverId(null)
   }
 
   function handleCreate(e) {
@@ -116,6 +155,13 @@ export default function ProjectsPage() {
                   onOpen={() => navigate(`/project/${project.id}`)}
                   onDelete={e => handleDeleteClick(e, project)}
                   onImageUpload={e => handleImageUpload(e, project.id)}
+                  isDragging={draggedId === project.id}
+                  isDragOver={dragOverId === project.id}
+                  onDragStart={e => handleDragStart(e, project.id)}
+                  onDragOver={e => handleDragOver(e, project.id)}
+                  onDragLeave={() => setDragOverId(prev => (prev === project.id ? null : prev))}
+                  onDrop={e => handleDrop(e, project.id)}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </ul>
@@ -145,7 +191,20 @@ export default function ProjectsPage() {
   )
 }
 
-function ProjectCard({ project, image, onOpen, onDelete, onImageUpload }) {
+function ProjectCard({
+  project,
+  image,
+  onOpen,
+  onDelete,
+  onImageUpload,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}) {
   const fileInputRef = useRef(null)
   const monogram = project.name.charAt(0).toUpperCase()
 
@@ -155,7 +214,15 @@ function ProjectCard({ project, image, onOpen, onDelete, onImageUpload }) {
   }
 
   return (
-    <li className={styles.card}>
+    <li
+      className={`${styles.card} ${isDragging ? styles.cardDragging : ''} ${isDragOver ? styles.cardDragOver : ''}`}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
       {/* Image area */}
       <div
         className={styles.cardImage}
