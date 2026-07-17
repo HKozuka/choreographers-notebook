@@ -38,18 +38,41 @@ The rest of the app is deliberately local-first and dependency-light: **React 19
 
 ## Getting Started
 
+**Prerequisites:** [Node.js](https://nodejs.org/) 18 or later (includes npm). No other tools or accounts are required to run the app — an IBM Cloud account is only needed if you want Seeds of Movement's AI ideation to work (step 3 below).
+
+**1. Clone the repository and install dependencies**
+
 ```bash
+git clone git@github.com:HKozuka/choreographers-notebook.git
+cd choreographers-notebook
 npm install
+```
+
+**2. (Optional) Set up watsonx.ai credentials for Seeds of Movement**
+
+Every other part of the app (Notes, Video Log, Music References, Visualization, Projects) works with no configuration. Only the Seeds of Movement AI feature needs credentials — skip this step if you just want to try the rest of the app.
+
+- Copy the example env file: `cp .env.example .env`
+- In the [IBM Cloud console](https://cloud.ibm.com/), create (or open) a watsonx.ai project, then generate an API key under **Manage → Access (IAM) → API keys**.
+- Open your watsonx.ai project's settings to find its **Project ID** (a UUID).
+- Fill in `.env` with both values:
+
+  ```
+  VITE_WATSONX_API_KEY=your_ibm_api_key_here
+  VITE_WATSONX_PROJECT_ID=your_watsonx_project_id_here
+  ```
+
+`.env` is already git-ignored, so your keys won't be committed.
+
+**3. Start the app**
+
+```bash
 npm run dev
 ```
 
-Seeds of Movement needs IBM watsonx.ai credentials (the rest of the app works without them). Create a `.env` file in the project root:
+Vite will print a local URL — open **http://localhost:5173** in your browser. Changes to the code hot-reload automatically; no rebuild step needed while developing.
 
-```
-VITE_WATSONX_API_KEY=your_ibm_api_key_here
-VITE_WATSONX_PROJECT_ID=your_watsonx_project_id_here
-```
-
+**Browser note:** Video Log and Music References can link a local folder on disk for playback, which uses the File System Access API — currently supported in Chrome and Edge, not Safari or Firefox. In-app recording and every other feature work in any modern browser.
 
 ## How IBM Bob Was Used
 
