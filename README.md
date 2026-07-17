@@ -36,6 +36,18 @@ The rest of the app is deliberately local-first and dependency-light: **React 19
 
 **Seeds of Movement** — the AI ideation workspace described above, with a plain-language description and clickable examples for each mode so you can see what it does before committing to it.
 
+## Selected Challenge Theme
+
+Submitted to the [IBM AI Builders Challenge](https://aibuilderschallenge-bob.bemyapp.com/) under the **"Reimagine Creative Industries with AI"** theme.
+
+## How IBM Bob Was Used
+
+IBM Bob was the primary development tool used to build this project. It scaffolded the Vite + React application, established the design system (the forest green / cream color tokens, typography, spacing scale) and the routing structure, and built out the core feature set: the home screen with project creation and `localStorage` persistence, the Seeds of Movement page with its initial watsonx.ai integration and the three mode system prompts, the in-browser camera recording modal, the four-tab project page shell, and the Notes, Video Log, Music References, and Visualization tabs themselves — including the File System Access API folder-linking flow and the in-app audio/video recording.
+
+## Design
+
+Forest green and cream, serif display type paired with a simple sans-serif body — meant to feel like an actual notebook rather than a typical SaaS dashboard. Motion is used sparingly and stays fast: entrances, hovers, and page transitions are all short and calm rather than showy.
+
 ## Getting Started
 
 **Prerequisites:** [Node.js](https://nodejs.org/) 18 or later (includes npm). No other tools or accounts are required to run the app — an IBM Cloud account is only needed if you want Seeds of Movement's AI ideation to work (step 3 below).
@@ -74,14 +86,5 @@ Vite will print a local URL — open **http://localhost:5173** in your browser. 
 
 **Browser note:** Video Log and Music References can link a local folder on disk for playback, which uses the File System Access API — currently supported in Chrome and Edge, not Safari or Firefox. In-app recording and every other feature work in any modern browser.
 
-## How IBM Bob Was Used
 
-IBM Bob was the primary development tool used to build this project. It scaffolded the Vite + React application, established the design system (the forest green / cream color tokens, typography, spacing scale) and the routing structure, and built out the core feature set: the home screen with project creation and `localStorage` persistence, the Seeds of Movement page with its initial watsonx.ai integration and the three mode system prompts, the in-browser camera recording modal, the four-tab project page shell, and the Notes, Video Log, Music References, and Visualization tabs themselves — including the File System Access API folder-linking flow and the in-app audio/video recording.
 
-## Design
-
-Forest green and cream, serif display type paired with a simple sans-serif body — meant to feel like an actual notebook rather than a typical SaaS dashboard. Motion is used sparingly and stays fast: entrances, hovers, and page transitions are all short and calm rather than showy.
-
-## Selected Challenge Theme
-
-Submitted to the [IBM AI Builders Challenge](https://aibuilderschallenge-bob.bemyapp.com/) under the **"Reimagine Creative Industries with AI"** theme.
